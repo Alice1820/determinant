@@ -5,6 +5,7 @@ from torch.autograd import Variable
 import numpy as np
 
 import torch.nn.functional as F
+from determinant import Determinant
 
 class MatchingNetwork(nn.Module):
     def __init__(self, way=5, shot=5, quiry=15):
@@ -62,7 +63,12 @@ class MatchingNetwork(nn.Module):
         Returns:
         dists: [way*shot, quiry] same for examples in a same category
         '''
-        pass
+        matrix = support.sub_(sample)
+        print (matrix)
+        matrix_trans = matrix.permute(1, 0) # D, way*shot
+        matrix = matrix.unsqueeze(0).bmm(matrix_trans.unsqueeze(0))
+        
+        return Determinant(matrix)
 
     def AttentionalClassify(self, similarities, support_set_y):
         """
