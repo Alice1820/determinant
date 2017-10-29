@@ -63,12 +63,16 @@ class MatchingNetwork(nn.Module):
         Returns:
         dists: [way*shot, quiry] same for examples in a same category
         '''
-        matrix = support.sub_(sample)
-        print (matrix)
-        matrix_trans = matrix.permute(1, 0) # D, way*shot
-        matrix = matrix.unsqueeze(0).bmm(matrix_trans.unsqueeze(0))
-        
-        return Determinant(matrix)
+        dists = []
+        for q in range(self.quiry):
+            matrix = support.sub_(sample)
+            print (matrix)
+            matrix_trans = matrix.permute(1, 0) # D, way*shot
+            matrix = matrix.unsqueeze(0).bmm(matrix_trans.unsqueeze(0))
+            dists.append(Determinant(matrix))
+        print (dists)
+
+        return dists
 
     def AttentionalClassify(self, similarities, support_set_y):
         """
@@ -101,8 +105,10 @@ class MatchingNetwork(nn.Module):
         for b in range(batchsize):
             support_set = support[b] # 25, 1600
             sample_set = sample[b] # 15, 1600
-            cosine_similarity = self.cosine_distance(support_set, sample_set) # [self.way*self.shot, self.quiry]
-            similarities.append(cosine_similarity)
+            # cosine_similarity = self.cosine_distance(support_set, sample_set) # [self.way*self.shot, self.quiry]
+            simplex_similarity = self.simplex_distance(support_set, sample_set)
+            # similarities.append(cosine_similarity)
+            similarities.append(simplex_similarity)
         similarities = torch.stack(similarities) # batchsize, self.way*self.shot, self.quiry
         # similarities = similarities.view(self.way*self.shot, self.quiry)
         logits = self.AttentionalClassify(similarities, support_label) # batchsize, quiry, way
