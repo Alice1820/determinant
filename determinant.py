@@ -5,5 +5,5 @@ import numpy as np
 
 k = 5
 D = 5
-matrix = torch.LongTensor(k, d).random_()
+matrix = torch.LongTensor(k, D).random_()
 print (matrix)
