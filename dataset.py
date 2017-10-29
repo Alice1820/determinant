@@ -60,12 +60,12 @@ class miniImagenet(Dataset):
             for i in index_i:
                 string = "%02d" % c + "%03d" % i
                 support_list.append(self.label2dir[string])
-                support_label.append(c)
+            support_label.append(c)
         index_i = random.sample(range(600), self.shot+self.quiry)
         for i in range(self.shot):
             string = "%02d" % index_c[label] + "%03d" % index_i[i]
             support_list.append(self.label2dir[string])
-            support_label.append(label)
+        support_label.append(label)
         for i in range(self.shot, self.shot+self.quiry):
             string = "%02d" % index_c[label] + "%03d" % index_i[i]
             sample_list.append(self.label2dir[string])
@@ -97,7 +97,7 @@ class miniImagenet(Dataset):
         support_label = torch.LongTensor(support_label).unsqueeze(-1)
         # print (support_label)
         # print (sample_label)
-        support_label = torch.zeros(self.way*self.shot, self.way).scatter_(1, support_label, 1)
+        support_label = torch.zeros(self.shot, self.way).scatter_(1, support_label, 1)
         # sample_label = torch.zeros(self.quiry, self.way).scatter_(1, sample_label, 1)
         # print (support_label)
         # print (sample_label)

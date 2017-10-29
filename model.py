@@ -63,27 +63,50 @@ class MatchingNetwork(nn.Module):
         Returns:
         dists: [way*shot, quiry] same for examples in a same category
         '''
+        support = support.view(self.way, self.shot, 1600)
         dists = []
-        for q in range(self.quiry):
-            matrix = support.sub_(sample)
-            print (matrix)
-            matrix_trans = matrix.permute(1, 0) # D, way*shot
-            matrix = matrix.unsqueeze(0).bmm(matrix_trans.unsqueeze(0))
-            dists.append(Determinant(matrix))
-        print (dists)
+        for s in range(self.way):
+            matrix_A = support[s, 1:].sub(support[s, 0].repeat(self.shot-1, 1))
+            matrix_A_trans = matrix_A.permute(1, 0) # D, way*shot
+            matrix_A = matrix_A.unsqueeze(0).bmm(matrix_A_trans.unsqueeze(0)).squeeze()
+            Volume_A = Determinant(matrix_A) # 0
+#            print (Volume_A, 'Volume_A')
+            for q in range(self.quiry):
+                matrix_B = support[s].sub(sample[q].repeat(self.shot, 1))
+    #            print (matrix)
+                matrix_B_trans = matrix_B.permute(1, 0) # D, way*shot
+                matrix_B = matrix_B.unsqueeze(0).bmm(matrix_B_trans.unsqueeze(0)).squeeze()
+#                print (matrix)
+#                print (Determinant(matrix))
+                Volume_B = Determinant(matrix_B)
+                dists.append(Volume_B / Volume_A)
+        dists = torch.stack(dists)
+#        print (dists)
+        dists = dists.repeat(1, self.way)
+#        print (dists)
 
         return dists
 
     def AttentionalClassify(self, similarities, support_set_y):
         """
         similarities: [batchsize, way*shot, quiry]
-        support_set_y: [batchsize, way*shot, way] one hot
+        support_set_y: [batchsize, way, way] one hot
         """
         '''one_hot'''
-        similarities = similarities.permute(0, 2, 1).contiguous().view(-1, self.way*self.shot) # [batchsize, quiry, way*shot]
+        similarities = similarities.permute(0, 2, 1).contiguous().view(-1, self.way*self.shot) # [batchsize*quiry, way*shot]
         softmax = nn.Softmax()
-        softmax_similarities = softmax(similarities).view(-1, self.quiry, self.way*self.shot) # batchsize, self.quiry, self.way*self.shot
+#        print (similarities)
+        max_values, _ = torch.max(similarities, dim=-1)
+#        print (max_values)
+        similarities = similarities/(max_values.repeat(1, self.way*self.shot))
+#        print (similarities, 'similarities, normed')
+        similarities = similarities.view(-1, self.way, self.shot)
+        similarities = torch.sum(similarities, dim=2).view(-1, self.way) # batchsize, self.quiry, self.way
+#        print (similarities)
+#        print (softmax(similarities))
+        softmax_similarities = softmax(similarities).view(-1, self.quiry, self.way) # batchsize, self.quiry, self.way
         preds = softmax_similarities.bmm(support_set_y) # batchsize, quiry, way
+#        print (preds)
         return preds
 
     def DistanceNetwork(self, support, support_label, sample):
@@ -112,6 +135,7 @@ class MatchingNetwork(nn.Module):
         similarities = torch.stack(similarities) # batchsize, self.way*self.shot, self.quiry
         # similarities = similarities.view(self.way*self.shot, self.quiry)
         logits = self.AttentionalClassify(similarities, support_label) # batchsize, quiry, way
+#        print (logits)
         return logits
 
     def convnet(self, images):

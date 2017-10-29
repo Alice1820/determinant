@@ -29,7 +29,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S', help='random see
 parser.add_argument('--log-interval', type=int, default=1, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
-parser.add_argument('--quiry', type=int, default=1)
+parser.add_argument('--quiry', type=int, default=4)
 
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -78,7 +78,7 @@ def train(epoch):
 
         # exm_per_sec = args.batch_size / (time.time() - start_time)
         if step % args.log_interval == 0:
-            print ('{}; <Train> Epoch: {}; Step: {:d}; Loss: {:.5f}; Avg_loss: {:.5f}; Avg_accuracy: {:.5f}' \
+            print ('{}; <Train> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
     with open('logs_train.csv', 'a') as csvfile_train:
@@ -128,7 +128,7 @@ def val(epoch):
 
         # exm_per_sec = args.batch_size / (time.time() - start_time)
         if step % args.log_interval == 0:
-            print ('{}; <Val> Epoch: {}; Step: {:d}; Loss: {:.5f}; Avg_loss: {:.5f}; Avg_accuracy: {:.5f}' \
+            print ('{}; <Val> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
     with open('logs_val.csv', 'a') as csvfile_train:
@@ -176,7 +176,7 @@ def test(epoch):
 
         # exm_per_sec = args.batch_size / (time.time() - start_time)
         if step % args.log_interval == 0:
-            print ('{}; <Test> Epoch: {}; Step: {:d}; Loss: {:.5f}; Avg_loss: {:.5f}; Avg_accuracy: {:.5f}' \
+            print ('{}; <Test> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
     with open('logs_test.csv', 'a') as csvfile_train:
