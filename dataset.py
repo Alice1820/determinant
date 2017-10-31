@@ -14,6 +14,15 @@ import scipy.io as sio
 
 class miniImagenet(Dataset):
     def __init__(self, split='train', way=5, shot=5, quiry=15):
+        # with open('label2dir_train.pkl', 'rb') as f:
+        #     # split: 'train', 'val', 'test'
+        #     self.label2dir_train = pickle.load(f)
+        # with open('label2dir_val.pkl', 'rb') as f:
+        #     # split: 'train', 'val', 'test'
+        #     self.label2dir_val = pickle.load(f)
+        # with open('label2dir_test.pkl', 'rb') as f:
+        #     # split: 'train', 'val', 'test'
+        #     self.label2dir_test = pickle.load(f)
         with open('label2dir_' + split + '.pkl', 'rb') as f:
             # split: 'train', 'val', 'test'
             self.label2dir = pickle.load(f)
@@ -58,7 +67,7 @@ class miniImagenet(Dataset):
                 continue
             index_i = random.sample(range(600), self.shot)
             for i in index_i:
-                string = "%02d" % c + "%03d" % i
+                string = "%02d" % index_c[c] + "%03d" % i
                 support_list.append(self.label2dir[string])
             support_label.append(c)
         index_i = random.sample(range(600), self.shot+self.quiry)
@@ -94,20 +103,18 @@ class miniImagenet(Dataset):
         sample_img = sample_img.view(self.quiry, 3, 84, 84)
 
         sample_label = torch.LongTensor(sample_label)
-        support_label = torch.LongTensor(support_label).unsqueeze(-1)
+        support_label = torch.LongTensor(support_label)
         # print (support_label)
         # print (sample_label)
-        support_label = torch.zeros(self.shot, self.way).scatter_(1, support_label, 1)
+        '''one hot'''
+        support_label = support_label.unsqueeze(-1)
+        # sample_label = sample_label.unsqueeze(-1)
+        support_label = torch.zeros(self.way, self.way).scatter_(1, support_label, 1)
         # sample_label = torch.zeros(self.quiry, self.way).scatter_(1, sample_label, 1)
+        # print (support_label.size())
+        support_label = support_label.unsqueeze(1).repeat(1, self.shot, 1)# [self.way*self.shot, self.way]
         # print (support_label)
         # print (sample_label)
-        # print (img.size)
-        # print (label)
-        # support_label = np.eye(self.way) # [self.way] [20, 20]
-        # support_label = np.unqueeze(support_label, 1) # [20, 1, 20]
-        # support_label = np.tile(support_label, [1, self.way, 1]) # [self.way*self.shot, self.way]
-        # support_label = torch.IntTensor(support_label)
-        # support_label = support_label.view(self.way*self.shot, self.way)
 
         return support_img, support_label, sample_img, sample_label
 

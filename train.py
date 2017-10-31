@@ -27,6 +27,7 @@ parser.add_argument('--no-cuda', action='store_true', default=False, help='disab
 parser.add_argument('--is-multi-gpu', default=False, help='if use multiple gpu(default: False)')
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N', help='how many batches to wait before logging training status')
+parser.add_argument('--from-epoch', type=int, default=35)
 parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
 parser.add_argument('--quiry', type=int, default=4)
@@ -62,7 +63,8 @@ def train(epoch):
 
         matchnet.zero_grad()
         output = matchnet(support, support_label, sample)
-
+        # print (output)
+        # print (label)
         output = output.view(-1, args.way)
         label = label.view(-1)
         pred_label = output.data.cpu().numpy().argmax(1)
@@ -203,7 +205,7 @@ optimizer = optim.Adam(matchnet.parameters(), lr=1e-3)
 
 # model restore
 try:
-    checkpoint = torch.load('model/epoch_7930.pth')
+    checkpoint = torch.load('./model/epoch_' + str(args.from_epoch) + '.pth')
     matchnet.load_state_dict(checkpoint)
     print("\n--------model restored--------\n")
 except:
@@ -213,15 +215,15 @@ except:
 csvfilename_train = 'logs_train.csv'
 csvfilename_test = 'logs_test.csv'
 
-with open('logs_train.csv', 'w') as csvfile_train:
+with open('logs_train.csv', 'a') as csvfile_train:
     fieldnames_train = ['epoch', 'train_loss', 'train_acc']
     writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
     writer_train.writeheader()
-with open('logs_val.csv', 'w') as  csvfile_test:
+with open('logs_val.csv', 'a') as  csvfile_test:
     fieldnames_test = ['epoch', 'val_loss', 'val_acc']
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
-with open('logs_test.csv', 'w') as  csvfile_test:
+with open('logs_test.csv', 'a') as  csvfile_test:
     fieldnames_test = ['epoch', 'test_loss', 'test_acc']
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
@@ -232,5 +234,5 @@ for epoch in range(args.n_epoch):
     # test(epoch)
     if epoch%1==0:
         val(epoch)
-        test(epoch)
+        # test(epoch)
         torch.save(matchnet.state_dict(), 'model/epoch_{}.pth'.format(epoch))

@@ -61,14 +61,14 @@ class MatchingNetwork(nn.Module):
         support: [way*shot, D]
         sample: [quiry, D]
         Returns:
-        dists: [way*shot, quiry] same for examples in a same category
+        dists: [way, shot, quiry] same for examples in a same category
         '''
         support = support.view(self.way, self.shot, 1600)
         dists = []
         for s in range(self.way):
-            matrix_A = support[s, 1:].sub(support[s, 0].repeat(self.shot-1, 1))
-            matrix_A_trans = matrix_A.permute(1, 0) # D, way*shot
-            matrix_A = matrix_A.unsqueeze(0).bmm(matrix_A_trans.unsqueeze(0)).squeeze()
+            matrix_A = support[s, 1:].sub(support[s, 0].repeat(self.shot-1, 1)) # shot-1, D
+            matrix_A_trans = matrix_A.permute(1, 0) # D, shot-1
+            matrix_A = matrix_A.unsqueeze(0).bmm(matrix_A_trans.unsqueeze(0)).squeeze() # self.shot-1, self.shot-1
             Volume_A = Determinant(matrix_A) # 0
 #            print (Volume_A, 'Volume_A')
             for q in range(self.quiry):
@@ -80,10 +80,19 @@ class MatchingNetwork(nn.Module):
 #                print (Determinant(matrix))
                 Volume_B = Determinant(matrix_B)
                 dists.append(Volume_B / Volume_A)
-        dists = torch.stack(dists)
-#        print (dists)
-        dists = dists.repeat(1, self.way)
-#        print (dists)
+        dists = torch.stack(dists).squeeze().view(self.way, self.quiry).unsqueeze(1).repeat(1, self.shot, 1)
+        # way, shot, quiry
+        # print (dists)
+        # print (torch.max(dists))
+        '''numpy'''
+        # max_values = torch.max(dists).data.cpu().numpy()[0]
+        # print (max_values)
+        '''repeat tensor'''
+        max_values = torch.max(dists).unsqueeze(0).unsqueeze(0).repeat(self.way, self.shot, self.quiry)
+
+        # dists = dists / (max_values.repeat(1, self.way*self.shot))
+        dists = max_values / dists
+        dists = dists.view(-1, self.quiry)
 
         return dists
 
@@ -95,28 +104,34 @@ class MatchingNetwork(nn.Module):
         '''one_hot'''
         similarities = similarities.permute(0, 2, 1).contiguous().view(-1, self.way*self.shot) # [batchsize*quiry, way*shot]
         softmax = nn.Softmax()
-#        print (similarities)
-        max_values, _ = torch.max(similarities, dim=-1)
+        # print (similarities)  # batchsize*quiry, way*shot
 #        print (max_values)
-        similarities = similarities/(max_values.repeat(1, self.way*self.shot))
-#        print (similarities, 'similarities, normed')
-        similarities = similarities.view(-1, self.way, self.shot)
-        similarities = torch.sum(similarities, dim=2).view(-1, self.way) # batchsize, self.quiry, self.way
+        '''Normalize for softmax'''
+        # max_values, _ = torch.max(similarities, dim=-1)
+        # min_values, _ = torch.min(similarities, dim=-1)
+        # similarities = (similarities - (min_values.repeat(1, self.way*self.shot)))/(max_values.repeat(1, self.way*self.shot) - min_values.repeat(1, self.way*self.shot)) # batchsize*quiry, way*shot
+        # print (similarities, 'similarities, normed')
+        '''sum for each category'''
+        # similarities = similarities.view(-1, self.way, self.shot)
+        # similarities = torch.sum(similarities, dim=2).view(-1, self.way) # batchsize*self.quiry, self.way
 #        print (similarities)
-#        print (softmax(similarities))
-        softmax_similarities = softmax(similarities).view(-1, self.quiry, self.way) # batchsize, self.quiry, self.way
-        preds = softmax_similarities.bmm(support_set_y) # batchsize, quiry, way
-#        print (preds)
+        # print (softmax(similarities))
+        # print (support_set_y) # batchsize, self.way, self.shot
+        softmax_similarities = softmax(similarities)
+        # softmax_similarities = 1 - softmax(similarities)
+        softmax_similarities = softmax_similarities.view(-1, self.quiry, self.way*self.shot) # batchsize, self.quiry, self.way*self.shot
+        preds = softmax_similarities.bmm(support_set_y.view(-1, self.way*self.shot, self.way)) # batchsize, quiry, way
+        # print (preds)
         return preds
 
     def DistanceNetwork(self, support, support_label, sample):
         '''make prediction with various distance
         Args:
-        support: [batchsize, k, D]
-        support_label: [batchsize, way*shot, way]
-        sample: [batchsize, m, D]
+        support: [batchsize, way*shot, D]
+        support_label: [batchsize, way, shot, way]
+        sample: [batchsize, quiry, D]
         Returns:
-        prediction: [batchsize] 0~(way-1)
+        prediction: [batchsize, quiry] 0~(way-1)
         '''
         # support = support.view(-1, self.way*self.shot, 1600) # batchsize*way*shot, 1600
         # sample = sample.view(-1, self.quiry, 1600) # batchsize*quiry, 1600
@@ -129,7 +144,7 @@ class MatchingNetwork(nn.Module):
             support_set = support[b] # 25, 1600
             sample_set = sample[b] # 15, 1600
             # cosine_similarity = self.cosine_distance(support_set, sample_set) # [self.way*self.shot, self.quiry]
-            simplex_similarity = self.simplex_distance(support_set, sample_set)
+            simplex_similarity = self.simplex_distance(support_set, sample_set) # way*shot, quiry
             # similarities.append(cosine_similarity)
             similarities.append(simplex_similarity)
         similarities = torch.stack(similarities) # batchsize, self.way*self.shot, self.quiry
