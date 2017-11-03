@@ -5,7 +5,7 @@ from torch.autograd import Variable
 import numpy as np
 
 import torch.nn.functional as F
-from determinant import Determinant
+from determinant import Determinant, Determinant_byBatch
 
 class MatchingNetwork(nn.Module):
     def __init__(self, way=5, shot=5, quiry=15):
@@ -55,6 +55,50 @@ class MatchingNetwork(nn.Module):
         cosine_similarity = cosine_similarity.view(self.way*self.shot, self.quiry)
         return cosine_similarity
 
+    def simplex_distance_byBatch(self, support, sample):
+        '''Calculate cosine distance among all k examples with respect to m sample
+        Args:
+        support: [batchsize, way*shot, D]
+        sample: [batchsize, quiry, D]
+        Returns:
+        dists: [batchsize*way*shot, quiry] same for examples in a same category
+        '''
+        # print (support)
+        # print (sample)
+        '''Volume_A'''
+        support = support.view(-1, self.shot, 1600) # batchsize*way, shot, D
+        matrix_A = support[:, 1:].sub(support[:, 0].unsqueeze(1).repeat(1, self.shot-1, 1)) # batchsize*way, shot-1, D
+        matrix_A_trans = matrix_A.permute(0, 2, 1) # batchsize*way, D, shot-1
+        matrix_A = matrix_A.bmm(matrix_A_trans) # batchsize*way, shot-1, shot-1
+        # print (matrix_A)
+        Volume_A = Determinant_byBatch(matrix_A) # batchsize*way
+        # print (Volume_A)
+        Volume_A = Volume_A.view(-1, self.way) # batchsize, way
+        # print (matrix_A.size(), 'matrix_A.size()')
+        '''Volume_B'''
+        support = support.view(-1, self.way*self.shot, 1600)
+        matrix_B = support.unsqueeze(1).repeat(1, self.quiry, 1, 1).sub(sample.unsqueeze(2).repeat(1, 1, self.way*self.shot, 1))
+        # batchsize, quiry, way*shot, D
+        # print (matrix_B.size(), 'matrix_B.size()')
+        matrix_B = matrix_B.view(-1, self.shot, 1600) # batchsiz*quiry*way, shot, D
+        matrix_B_trans = matrix_B.permute(0, 2, 1) # batchsiz*quiry*way, D, shot
+        matrix_B = matrix_B.bmm(matrix_B_trans) # batchsiz*quiry*way, shot, shot
+        # print (matrix_B)
+        Volume_B = Determinant_byBatch(matrix_B) # batchsize*quiry*way
+        # print (Volume_B)
+        Volume_B = Volume_B.view(-1, self.quiry, self.way) # batchsize, quiry, way
+
+        dists = Volume_B/(Volume_A.unsqueeze(1).repeat(1, self.quiry, 1))  # batchsize, quiry, way
+        # dists = dists.unsqueeze(2).repeat(1, 1, self.shot, 1).view(-1, self.way*self.shot, self.quiry) # batchsize, way*shot, quiry
+        min_values, _ = torch.min(dists, -1) # batchsize, self.quiry, 1
+        # print (min_values.size())
+        dists = min_values.repeat(1, 1, self.way)/dists # batchsize, quiry, way
+        # print (dists)
+        similarities = dists.permute(0, 2, 1).unsqueeze(2).repeat(1, 1, self.shot, 1).view(-1, self.way*self.shot, self.quiry)
+        # batchsize, way*shot, quiry
+
+        return similarities
+
     def simplex_distance(self, support, sample):
         '''Calculate cosine distance among all k examples with respect to m sample
         Args:
@@ -70,14 +114,14 @@ class MatchingNetwork(nn.Module):
             matrix_A_trans = matrix_A.permute(1, 0) # D, shot-1
             matrix_A = matrix_A.unsqueeze(0).bmm(matrix_A_trans.unsqueeze(0)).squeeze() # self.shot-1, self.shot-1
             Volume_A = Determinant(matrix_A) # 0
-#            print (Volume_A, 'Volume_A')
+        #    print (Volume_A, 'Volume_A')
             for q in range(self.quiry):
                 matrix_B = support[s].sub(sample[q].repeat(self.shot, 1))
-    #            print (matrix)
+            #    print (matrix)
                 matrix_B_trans = matrix_B.permute(1, 0) # D, way*shot
                 matrix_B = matrix_B.unsqueeze(0).bmm(matrix_B_trans.unsqueeze(0)).squeeze()
-#                print (matrix)
-#                print (Determinant(matrix))
+            #    print (matrix)
+            #    print (Determinant(matrix))
                 Volume_B = Determinant(matrix_B)
                 dists.append(Volume_B / Volume_A)
         dists = torch.stack(dists).squeeze().view(self.way, self.quiry).unsqueeze(1).repeat(1, self.shot, 1)
@@ -96,33 +140,63 @@ class MatchingNetwork(nn.Module):
 
         return dists
 
-    def AttentionalClassify(self, similarities, support_set_y):
+    def AttentionalClassify_byBatch(self, similarities, support_set_y):
         """
         similarities: [batchsize, way*shot, quiry]
-        support_set_y: [batchsize, way, way] one hot
+        support_set_y: [batchsize, way, shot, way] one hot
         """
         '''one_hot'''
         similarities = similarities.permute(0, 2, 1).contiguous().view(-1, self.way*self.shot) # [batchsize*quiry, way*shot]
         softmax = nn.Softmax()
-        # print (similarities)  # batchsize*quiry, way*shot
-#        print (max_values)
-        '''Normalize for softmax'''
-        # max_values, _ = torch.max(similarities, dim=-1)
-        # min_values, _ = torch.min(similarities, dim=-1)
-        # similarities = (similarities - (min_values.repeat(1, self.way*self.shot)))/(max_values.repeat(1, self.way*self.shot) - min_values.repeat(1, self.way*self.shot)) # batchsize*quiry, way*shot
-        # print (similarities, 'similarities, normed')
-        '''sum for each category'''
-        # similarities = similarities.view(-1, self.way, self.shot)
-        # similarities = torch.sum(similarities, dim=2).view(-1, self.way) # batchsize*self.quiry, self.way
-#        print (similarities)
-        # print (softmax(similarities))
-        # print (support_set_y) # batchsize, self.way, self.shot
-        softmax_similarities = softmax(similarities)
+        softmax_similarities = softmax(similarities) # batchsize*quiry, way*shot
+        # print (softmax_similarities)
+        # print (support_set_y)
         # softmax_similarities = 1 - softmax(similarities)
         softmax_similarities = softmax_similarities.view(-1, self.quiry, self.way*self.shot) # batchsize, self.quiry, self.way*self.shot
         preds = softmax_similarities.bmm(support_set_y.view(-1, self.way*self.shot, self.way)) # batchsize, quiry, way
         # print (preds)
         return preds
+
+    def AttentionalClassify(self, similarities, support_set_y):
+        """
+        similarities: [batchsize, way*shot, quiry]
+        support_set_y: [batchsize, way, shot, way] one hot
+        """
+        '''one_hot'''
+        similarities = similarities.permute(0, 2, 1).contiguous().view(-1, self.way*self.shot) # [batchsize*quiry, way*shot]
+        softmax = nn.Softmax()
+        # print (similarities)
+        max_values, _ = torch.max(similarities, dim=-1)
+        # print (max_values)
+        similarities = similarities/(max_values.repeat(1, self.way*self.shot))
+        # print (similarities, 'similarities, normed')
+        similarities = similarities.view(-1, self.way, self.shot)
+        similarities = torch.sum(similarities, dim=2).view(-1, self.way) # batchsize, self.quiry, self.way
+        # print (similarities)
+        # print (softmax(similarities))
+        softmax_similarities = softmax(similarities).view(-1, self.quiry, self.way) # batchsize, self.quiry, self.way
+        preds = softmax_similarities.bmm(support_set_y.view(-1, self.way*self.shot, self.way)) # batchsize, quiry, way
+        # print (preds)
+        return preds
+
+    def DistanceNetwork_byBatch(self, support, support_label, sample):
+        '''make prediction with various distance
+        Args:
+        support: [batchsize, way*shot, D]
+        support_label: [batchsize, way, shot, way]
+        sample: [batchsize, quiry, D]
+        Returns:
+        prediction: [batchsize, quiry] 0~(way-1)
+        '''
+        batchsize, _, _ = sample.size()
+
+        similarities = []
+        # cosine_similarity = self.cosine_distance(support_set, sample_set) # [self.way*self.shot, self.quiry]
+        simplex_similarities = self.simplex_distance_byBatch(support, sample) # batchsize, way*shot, quiry
+        # similarities.append(cosine_similarity)
+        logits = self.AttentionalClassify_byBatch(simplex_similarities, support_label) # batchsize, quiry, way
+        # print (logits)
+        return logits
 
     def DistanceNetwork(self, support, support_label, sample):
         '''make prediction with various distance
@@ -150,7 +224,7 @@ class MatchingNetwork(nn.Module):
         similarities = torch.stack(similarities) # batchsize, self.way*self.shot, self.quiry
         # similarities = similarities.view(self.way*self.shot, self.quiry)
         logits = self.AttentionalClassify(similarities, support_label) # batchsize, quiry, way
-#        print (logits)
+        # print (logits)
         return logits
 
     def convnet(self, images):
@@ -191,7 +265,8 @@ class MatchingNetwork(nn.Module):
         # print (sample.size())
         support = support.view(-1, self.way*self.shot, 1600)
         sample = sample.view(-1, self.quiry, 1600)
-        logits = self.DistanceNetwork(support, support_label, sample)
+        logits = self.DistanceNetwork_byBatch(support, support_label, sample) # batchsize, quiry, way
+        # logits = self.DistanceNetwork(support, support_label, sample) # batchsize, quiry, way
         # print (logits.size())
         # print (sample_label.size())
         return logits

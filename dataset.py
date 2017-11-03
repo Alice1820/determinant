@@ -149,7 +149,7 @@ class miniImagenet(Dataset):
         return img
 
     def __len__(self):
-        return int(self.setsize*100/self.quiry)
+        return int(self.setsize*600/self.quiry)
         # return len(self.label2dir)
 
 #transform1 =
