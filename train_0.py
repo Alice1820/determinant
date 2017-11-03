@@ -30,7 +30,7 @@ parser.add_argument('--log-interval', type=int, default=1, metavar='N', help='ho
 parser.add_argument('--from-epoch', type=int, default=35)
 parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
-parser.add_argument('--quiry', type=int, default=4)
+parser.add_argument('--quiry', type=int, default=1)
 
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
