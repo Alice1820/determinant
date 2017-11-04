@@ -16,7 +16,7 @@ import time
 import random
 import csv
 import datetime
-from dataset import miniImagenet, collate_data
+from dataset_2 import miniImagenet, collate_data
 from model import MatchingNetwork
 
 # Training settings
@@ -83,7 +83,7 @@ def train(epoch):
             print ('{}; <Train> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
-    with open('logs_train.csv', 'a') as csvfile_train:
+    with open('logs_train_0.csv', 'a') as csvfile_train:
         fieldnames_train = ['epoch', 'train_loss', 'train_acc']
         writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
         writer_train.writerow({'epoch':epoch, 'train_loss':avg_loss/(step+1), 'train_acc':avg_acc/(step+1)})
@@ -133,7 +133,7 @@ def val(epoch):
             print ('{}; <Val> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
-    with open('logs_val.csv', 'a') as csvfile_train:
+    with open('logs_val_0.csv', 'a') as csvfile_train:
         fieldnames_train = ['epoch', 'val_loss', 'val_acc']
         writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
         writer_train.writerow({'epoch':epoch, 'val_loss':avg_loss/(step+1), 'val_acc':avg_acc/(step+1)})
@@ -181,7 +181,7 @@ def test(epoch):
             print ('{}; <Test> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
-    with open('logs_test.csv', 'a') as csvfile_train:
+    with open('logs_test_0.csv', 'a') as csvfile_train:
         fieldnames_train = ['epoch', 'test_loss', 'test_acc']
         writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
         writer_train.writerow({'epoch':epoch, 'test_loss':avg_loss/(step+1), 'test_acc':avg_acc/(step+1)})
@@ -201,29 +201,29 @@ if args.cuda:
 else:
     criterion = nn.CrossEntropyLoss()
 
-optimizer = optim.Adam(matchnet.parameters(), lr=1e-6, weight_decay=1e-4)
+optimizer = optim.Adam(matchnet.parameters(), lr=1e-3)
 
 # model restore
 try:
-    checkpoint = torch.load('../ori/model/epoch_' + str(args.from_epoch) + '.pth')
+    checkpoint = torch.load('./model_0/epoch_' + str(args.from_epoch) + '.pth')
     matchnet.load_state_dict(checkpoint)
     print("\n--------model restored--------\n")
 except:
     print("\n--------model not restored--------\n")
 
 # keep logs
-csvfilename_train = 'logs_train.csv'
-csvfilename_test = 'logs_test.csv'
+csvfilename_train = 'logs_train_0.csv'
+csvfilename_test = 'logs_test_0.csv'
 
-with open('logs_train.csv', 'a') as csvfile_train:
+with open('logs_train_0.csv', 'a') as csvfile_train:
     fieldnames_train = ['epoch', 'train_loss', 'train_acc']
     writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
     writer_train.writeheader()
-with open('logs_val.csv', 'a') as  csvfile_test:
+with open('logs_val_0.csv', 'a') as  csvfile_test:
     fieldnames_test = ['epoch', 'val_loss', 'val_acc']
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
-with open('logs_test.csv', 'a') as  csvfile_test:
+with open('logs_test_0.csv', 'a') as  csvfile_test:
     fieldnames_test = ['epoch', 'test_loss', 'test_acc']
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
@@ -235,4 +235,4 @@ for epoch in range(args.n_epoch):
     if epoch%5==0:
         val(epoch)
         test(epoch)
-        torch.save(matchnet.state_dict(), 'model/epoch_{}.pth'.format(epoch))
+        torch.save(matchnet.state_dict(), 'model_0/epoch_{}.pth'.format(epoch))
