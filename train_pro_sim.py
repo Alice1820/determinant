@@ -17,7 +17,7 @@ import random
 import csv
 import datetime
 from dataset_pro import miniImagenet, collate_data
-from model_pro import ProtoNetwork
+from model_pro_sim import ProtoNetwork
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch')
@@ -90,7 +90,7 @@ def train(epoch):
             print ('{}; <Train> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
-    with open('logs_train_pro.csv', 'a') as csvfile_train:
+    with open('logs_train_pro_sim.csv', 'a') as csvfile_train:
         fieldnames_train = ['epoch', 'train_loss', 'train_acc']
         writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
         writer_train.writerow({'epoch':epoch, 'train_loss':avg_loss/(step+1), 'train_acc':avg_acc/(step+1)})
@@ -140,7 +140,7 @@ def val(epoch):
             print ('{}; <Val> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
-    with open('logs_val_pro.csv', 'a') as csvfile_train:
+    with open('logs_val_pro_sim.csv', 'a') as csvfile_train:
         fieldnames_train = ['epoch', 'val_loss', 'val_acc']
         writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
         writer_train.writerow({'epoch':epoch, 'val_loss':avg_loss/(step+1), 'val_acc':avg_acc/(step+1)})
@@ -188,7 +188,7 @@ def test(epoch):
             print ('{}; <Test> Epoch: {}; Step: {:d}; Loss: {:.10f}; Avg_loss: {:.10f}; Avg_accuracy: {:.10f}' \
                    .format(datetime.datetime.now(), epoch, step, loss.data[0], avg_loss/(step+1), avg_acc/(step+1)))
 
-    with open('logs_test_pro.csv', 'a') as csvfile_train:
+    with open('logs_test_pro_sim.csv', 'a') as csvfile_train:
         fieldnames_train = ['epoch', 'test_loss', 'test_acc']
         writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
         writer_train.writerow({'epoch':epoch, 'test_loss':avg_loss/(step+1), 'test_acc':avg_acc/(step+1)})
@@ -219,18 +219,18 @@ except:
     print("\n--------model not restored--------\n")
 
 # keep logs
-csvfilename_train = 'logs_train_pro.csv'
-csvfilename_test = 'logs_test_pro.csv'
+csvfilename_train = 'logs_train_pro_sim.csv'
+csvfilename_test = 'logs_test_pro_sim.csv'
 
-with open('logs_train_pro.csv', 'a') as csvfile_train:
+with open('logs_train_pro_sim.csv', 'a') as csvfile_train:
     fieldnames_train = ['epoch', 'train_loss', 'train_acc']
     writer_train = csv.DictWriter(csvfile_train, fieldnames=fieldnames_train)
     writer_train.writeheader()
-with open('logs_val_pro.csv', 'a') as  csvfile_test:
+with open('logs_val_pro_sim.csv', 'a') as  csvfile_test:
     fieldnames_test = ['epoch', 'val_loss', 'val_acc']
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
-with open('logs_test_pro.csv', 'a') as  csvfile_test:
+with open('logs_test_pro_sim.csv', 'a') as  csvfile_test:
     fieldnames_test = ['epoch', 'test_loss', 'test_acc']
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
@@ -242,4 +242,4 @@ for epoch in range(args.n_epoch):
     if epoch%args.test_interval==0:
         val(epoch)
         test(epoch)
-        torch.save(protonet.state_dict(), 'model_pro/epoch_{}.pth'.format(epoch))
+        torch.save(protonet.state_dict(), 'model_pro_sim/epoch_{}.pth'.format(epoch))

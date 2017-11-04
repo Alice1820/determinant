@@ -152,7 +152,8 @@ class ProtoNetwork(nn.Module):
         # print (sample.size())
         support = support.view(-1, self.way*self.shot, 1600)
         sample = sample.view(-1, self.way*self.quiry, 1600)
-        logits = self.euclidean_distance_byBatch(support, sample) # [batchsize, quiry, way]
+        # logits = self.euclidean_distance_byBatch(support, sample) # [batchsize, quiry, way]
+        logits = self.simplex_distance_byBatch(support, sample)
         softmax_logits = self.softmax(logits.view(-1, self.way)) # [batchsize, quiry, way]
         # logits = self.DistanceNetwork(support, support_label, sample) # batchsize, quiry, way
         # print (logits.size())

@@ -57,31 +57,24 @@ class miniImagenet(Dataset):
         support_list = [] # way*shot
         sample_list = [] # quiry
         index_c = random.sample(range(self.setsize), self.way)
-        label = random.sample(range(self.way), 1)[0]
         support_label = []
         sample_label = []
         # print (index_c)
         # print (label)
         for c in range(self.way):
-            if c==label:
-                continue
-            index_i = random.sample(range(600), self.shot)
-            for i in index_i:
-                string = "%02d" % index_c[c] + "%03d" % i
-                support_list.append(self.label2dir[string])
-            support_label.append(c)
-        index_i = random.sample(range(600), self.shot+self.quiry)
-        for i in range(self.shot):
-            string = "%02d" % index_c[label] + "%03d" % index_i[i]
-            support_list.append(self.label2dir[string])
-        support_label.append(label)
-        for i in range(self.shot, self.shot+self.quiry):
-            string = "%02d" % index_c[label] + "%03d" % index_i[i]
-            sample_list.append(self.label2dir[string])
-            sample_label.append(label)
-        # print (support_list)
-        # print (sample_list)
+            index_i = random.sample(range(600), self.shot+self.quiry) # shuffled
+            # print (index_i)
+            for i in range(self.shot+self.quiry):
+                string = "%02d" % index_c[c] + "%03d" % index_i[i]
+                if i<self.shot:
+                    support_list.append(self.label2dir[string])
+                    support_label.append(c)
+                else:
+                    sample_list.append(self.label2dir[string])
+                    sample_label.append(c)
 
+        # print (support_list.__len__()) # 25
+        # print (sample_list.__len__()) # 5
         support_img = [] # [way, shot, 84, 84, 3]
         sample_img = [] # [quiry, 84, 84, 3]
         for imgfile in support_list:
@@ -100,23 +93,24 @@ class miniImagenet(Dataset):
         support_img = torch.stack(support_img)
         sample_img = torch.stack(sample_img)
         support_img = support_img.view(self.way, self.shot, 3, 84, 84)
-        sample_img = sample_img.view(self.quiry, 3, 84, 84)
+        sample_img = sample_img.view(self.way, self.quiry, 3, 84, 84)
 
         sample_label = torch.LongTensor(sample_label)
         support_label = torch.LongTensor(support_label)
         # print (support_label)
         # print (sample_label)
         '''one hot'''
-        support_label = support_label.unsqueeze(-1)
+        # support_label = support_label.unsqueeze(-1)
         # sample_label = sample_label.unsqueeze(-1)
-        support_label = torch.zeros(self.way, self.way).scatter_(1, support_label, 1)
-        # sample_label = torch.zeros(self.quiry, self.way).scatter_(1, sample_label, 1)
+        # support_label = torch.zeros(self.way, self.way).scatter_(1, support_label, 1)
+        # sample_label = torch.zeros(self.way, self.way).scatter_(1, sample_label, 1)
         # print (support_label.size())
-        support_label = support_label.unsqueeze(1).repeat(1, self.shot, 1)# [self.way*self.shot, self.way]
-        # print (support_label)
-        # print (sample_label)
+        # support_label = support_label.unsqueeze(1).repeat(1, self.shot, 1)# [self.way*self.shot, self.way]
+        # sample_label = sample_label.unsqueeze(1).repeat(1, self.quiry, 1)
+        # print (support_label) # way, shot, way
+        # print (sample_label) # way, quiry, way
 
-        return support_img, support_label, sample_img, sample_label
+        return support_img, sample_img, sample_label
 
     def augmentation(self, img):
         ''' ratotion n*90'''
@@ -165,14 +159,13 @@ class miniImagenet(Dataset):
 
 def collate_data(batch):
 
-    support_imgs, support_labels, sample_imgs, labels = [], [], [], []
+    support_imgs, sample_imgs, labels = [], [], []
     batch_size = len(batch)
 
     for i, b in enumerate(batch):
-        support_img, support_label, sample_img, label = b
+        support_img, sample_img, label = b
         support_imgs.append(support_img)
-        support_labels.append(support_label)
         sample_imgs.append(sample_img)
         labels.append(label)
 
-    return torch.stack(support_imgs), torch.stack(support_labels), torch.stack(sample_imgs), torch.stack(labels)
+    return torch.stack(support_imgs), torch.stack(sample_imgs), torch.stack(labels)
