@@ -119,9 +119,9 @@ class miniImagenet(Dataset):
         return support_img, support_label, sample_img, sample_label
 
     def augmentation(self, img):
-        # ''' ratotion n*90'''
-        # angle = random.randint(0, 3)*90
-        # img = img.rotate(angle)
+        ''' ratotion n*90'''
+        angle = random.randint(0, 3)*90
+        img = img.rotate(angle)
         ''' ratotion -5~5 '''
         angle = random.random()*10.0 - 5.0
         img = img.rotate(angle)

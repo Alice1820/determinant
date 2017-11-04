@@ -89,13 +89,14 @@ class MatchingNetwork(nn.Module):
         Volume_B = Volume_B.view(-1, self.quiry, self.way) # batchsize, quiry, way
 
         dists = Volume_B/(Volume_A.unsqueeze(1).repeat(1, self.quiry, 1))  # batchsize, quiry, way
-        # dists = dists.unsqueeze(2).repeat(1, 1, self.shot, 1).view(-1, self.way*self.shot, self.quiry) # batchsize, way*shot, quiry
-        min_values, _ = torch.min(dists, -1) # batchsize, self.quiry, 1
-        # print (min_values.size())
-        dists = min_values.repeat(1, 1, self.way)/dists # batchsize, quiry, way
-        # print (dists)
-        similarities = dists.permute(0, 2, 1).unsqueeze(2).repeat(1, 1, self.shot, 1).view(-1, self.way*self.shot, self.quiry)
-        # batchsize, way*shot, quiry
+        similarities = dists * (-1)
+        # # dists = dists.unsqueeze(2).repeat(1, 1, self.shot, 1).view(-1, self.way*self.shot, self.quiry) # batchsize, way*shot, quiry
+        # min_values, _ = torch.min(dists, -1) # batchsize, self.quiry, 1
+        # # print (min_values.size())
+        # dists = min_values.repeat(1, 1, self.way)/dists # batchsize, quiry, way
+        # # print (dists)
+        # similarities = dists.permute(0, 2, 1).unsqueeze(2).repeat(1, 1, self.shot, 1).view(-1, self.way*self.shot, self.quiry)
+        # # batchsize, way*shot, quiry
 
         return similarities
 
@@ -124,7 +125,7 @@ class MatchingNetwork(nn.Module):
             #    print (Determinant(matrix))
                 Volume_B = Determinant(matrix_B)
                 dists.append(Volume_B / Volume_A)
-        dists = torch.stack(dists).squeeze().view(self.way, self.quiry).unsqueeze(1).repeat(1, self.shot, 1)
+        # dists = torch.stack(dists).squeeze().view(self.way, self.quiry).unsqueeze(1).repeat(1, self.shot, 1)
         # way, shot, quiry
         # print (dists)
         # print (torch.max(dists))
@@ -194,9 +195,9 @@ class MatchingNetwork(nn.Module):
         # cosine_similarity = self.cosine_distance(support_set, sample_set) # [self.way*self.shot, self.quiry]
         simplex_similarities = self.simplex_distance_byBatch(support, sample) # batchsize, way*shot, quiry
         # similarities.append(cosine_similarity)
-        logits = self.AttentionalClassify_byBatch(simplex_similarities, support_label) # batchsize, quiry, way
+        # logits = self.AttentionalClassify_byBatch(simplex_similarities, support_label) # batchsize, quiry, way
         # print (logits)
-        return logits
+        return simplex_similarities
 
     def DistanceNetwork(self, support, support_label, sample):
         '''make prediction with various distance
@@ -265,7 +266,7 @@ class MatchingNetwork(nn.Module):
         # print (sample.size())
         support = support.view(-1, self.way*self.shot, 1600)
         sample = sample.view(-1, self.quiry, 1600)
-        logits = self.DistanceNetwork_byBatch(support, support_label, sample) # batchsize, quiry, way
+        logits = self.DistanceNetwork_byBatch(support, support_label, sample) # batchsize, wquiry, way
         # logits = self.DistanceNetwork(support, support_label, sample) # batchsize, quiry, way
         # print (logits.size())
         # print (sample_label.size())

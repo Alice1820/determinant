@@ -165,7 +165,7 @@ def test(epoch):
             Variable(support), Variable(support_label), Variable(sample), Variable(label)
 
         matchnet.zero_grad()
-        output = matchnet(support, support_label, sample)
+        output = matchnet(support, support_label, sample) # batchsize, quiry, way
 
         output = output.view(-1, args.way)
         label = label.view(-1)
@@ -174,7 +174,7 @@ def test(epoch):
         avg_acc += accuracy
         # print (output.size())
         # print (label.size())
-        loss = torch.sum(criterion(output, label))
+        loss = torch.sum(criterion(output, label))# output: -dists=similarities, before softmax
         # loss.backward()
         # optimizer.step()
         avg_loss += loss.data[0]
