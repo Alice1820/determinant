@@ -33,6 +33,8 @@ parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
 parser.add_argument('--quiry', type=int, default=1)
 parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--lr-decay-interval', type=int, default=5)
+parser.add_argument('--lr-decay-factor', type=float, default=0.5)
 
 
 args = parser.parse_args()
@@ -42,7 +44,7 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-def train(epoch):
+def train(epoch, optimizer):
     train_set = DataLoader(miniImagenet('train', way=args.way, shot=args.shot, quiry=args.quiry),
                     batch_size=args.batch_size, shuffle=True,
                     num_workers=16,
@@ -208,11 +210,9 @@ if args.cuda:
 else:
     criterion = nn.CrossEntropyLoss()
 
-optimizer = optim.Adam(protonet.parameters(), lr=args.lr)
-
 # model restore
 try:
-    checkpoint = torch.load('../ori/model/epoch_' + str(args.from_epoch) + '.pth')
+    checkpoint = torch.load('./model_pro/epoch_' + str(args.from_epoch) + '.pth')
     protonet.load_state_dict(checkpoint)
     print("\n--------model restored--------\n")
 except:
@@ -236,8 +236,11 @@ with open('logs_test_pro.csv', 'a') as  csvfile_test:
     writer_test.writeheader()
 
 for epoch in range(args.n_epoch):
-
-    train(epoch)
+    learning_rate = args.lr
+    if (epoch+1)%args.lr_decay_interval=0:
+        learning_rate *= args.lr_decay_factor
+    optimizer = optim.Adam(protonet.parameters(), lr=learning_rate, weight_decay=0.99)
+    train(epoch, optimizer)
     # test(epoch)
     if epoch%args.test_interval==0:
         val(epoch)
