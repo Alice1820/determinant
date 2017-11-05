@@ -8,8 +8,10 @@ import torch.nn.functional as F
 from determinant import Determinant, Determinant_byBatch
 
 class ProtoNetwork(nn.Module):
-    def __init__(self, way=5, shot=5, quiry=15):
+    def __init__(self, way=5, shot=5, quiry=15, if_cuda=True):
         super(ProtoNetwork, self).__init__()
+
+        self.if_cuda = if_cuda
 
         self.conv1 = nn.Conv2d(3, 64, 3, stride=1, padding=1)
         self.batchNorm1 = nn.BatchNorm2d(64)
@@ -84,16 +86,19 @@ class ProtoNetwork(nn.Module):
         Returns:
         dists: [batchsize, quiry, way] same for examples in a same category
         '''
-        # I_B = Variable(torch.FloatTensor(np.eye(self.shot)))
-        # I_A = Variable(torch.FloatTensor(np.eye(self.shot-1)))
+        I_B = Variable(torch.FloatTensor(np.eye(self.shot)))
+        I_A = Variable(torch.FloatTensor(np.eye(self.shot-1)))
+        if self.if_cuda:
+            I_B = I_B.cuda()
+            I_A = I_A.cuda()
         # print (support)
         # print (sample)
         '''Volume_A'''
         support = support.view(-1, self.shot, 1600) # batchsize*way, shot, D
         matrix_A = support[:, 1:].sub(support[:, 0].unsqueeze(1).repeat(1, self.shot-1, 1)) # batchsize*way, shot-1, D
         matrix_A_trans = matrix_A.permute(0, 2, 1) # batchsize*way, D, shot-1
-        # matrix_A = matrix_A.bmm(matrix_A_trans) + I_A
-        matrix_A = matrix_A.bmm(matrix_A_trans)# batchsize*way, shot-1, shot-1
+        matrix_A = matrix_A.bmm(matrix_A_trans) + I_A
+        # matrix_A = matrix_A.bmm(matrix_A_trans)# batchsize*way, shot-1, shot-1
         # print (matrix_A)
         Volume_A = Determinant_byBatch(matrix_A) # batchsize*way
         # print (Volume_A)
@@ -106,7 +111,7 @@ class ProtoNetwork(nn.Module):
         # print (matrix_B.size(), 'matrix_B.size()')
         matrix_B = matrix_B.view(-1, self.shot, 1600) # batchsiz*quiry*way, shot, D
         matrix_B_trans = matrix_B.permute(0, 2, 1) # batchsiz*quiry*way, D, shot
-        matrix_B = matrix_B.bmm(matrix_B_trans) # batchsiz*quiry*way, shot, shot
+        matrix_B = matrix_B.bmm(matrix_B_trans) + I_B # batchsiz*quiry*way, shot, shot
         # print (matrix_B)
         # Volume_B = Determinant_byBatch(matrix_B) + I_B# batchsize*quiry*way
         Volume_B = Determinant_byBatch(matrix_B)
