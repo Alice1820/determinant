@@ -84,15 +84,16 @@ class ProtoNetwork(nn.Module):
         Returns:
         dists: [batchsize, quiry, way] same for examples in a same category
         '''
-        I_B = Variable(torch.FloatTensor(np.eye(self.shot)))
-        I_A = Variable(torch.FloatTensor(np.eye(self.shot-1)))
+        # I_B = Variable(torch.FloatTensor(np.eye(self.shot)))
+        # I_A = Variable(torch.FloatTensor(np.eye(self.shot-1)))
         # print (support)
         # print (sample)
         '''Volume_A'''
         support = support.view(-1, self.shot, 1600) # batchsize*way, shot, D
         matrix_A = support[:, 1:].sub(support[:, 0].unsqueeze(1).repeat(1, self.shot-1, 1)) # batchsize*way, shot-1, D
         matrix_A_trans = matrix_A.permute(0, 2, 1) # batchsize*way, D, shot-1
-        matrix_A = matrix_A.bmm(matrix_A_trans) + I_A# batchsize*way, shot-1, shot-1
+        # matrix_A = matrix_A.bmm(matrix_A_trans) + I_A
+        matrix_A = matrix_A.bmm(matrix_A_trans)# batchsize*way, shot-1, shot-1
         # print (matrix_A)
         Volume_A = Determinant_byBatch(matrix_A) # batchsize*way
         # print (Volume_A)
@@ -107,7 +108,8 @@ class ProtoNetwork(nn.Module):
         matrix_B_trans = matrix_B.permute(0, 2, 1) # batchsiz*quiry*way, D, shot
         matrix_B = matrix_B.bmm(matrix_B_trans) # batchsiz*quiry*way, shot, shot
         # print (matrix_B)
-        Volume_B = Determinant_byBatch(matrix_B) + I_B# batchsize*quiry*way
+        # Volume_B = Determinant_byBatch(matrix_B) + I_B# batchsize*quiry*way
+        Volume_B = Determinant_byBatch(matrix_B)
         # print (Volume_B)
         Volume_B = Volume_B.view(-1, self.way*self.quiry, self.way) # batchsize, quiry, way
 
