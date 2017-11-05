@@ -33,7 +33,7 @@ parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
 parser.add_argument('--quiry', type=int, default=1)
 parser.add_argument('--lr', type=float, default=1e-3)
-parser.add_argument('--lr-decay-interval', type=int, default=5)
+parser.add_argument('--lr-decay-interval', type=int, default=10)
 parser.add_argument('--lr-decay-factor', type=float, default=0.5)
 
 
@@ -235,11 +235,14 @@ with open('logs_test_pro.csv', 'a') as  csvfile_test:
     writer_test = csv.DictWriter(csvfile_test, fieldnames=fieldnames_test)
     writer_test.writeheader()
 
+learning_rate = args.lr/args.lr_decay_factor
 for epoch in range(args.n_epoch):
-    learning_rate = args.lr
-    if (epoch+1)%args.lr_decay_interval=0:
+    # with learning rate decay
+    if epoch%args.lr_decay_interval==0:
         learning_rate *= args.lr_decay_factor
-    optimizer = optim.Adam(protonet.parameters(), lr=learning_rate, weight_decay=0.99)
+        print ("decay learning rate===>" + str(learning_rate))
+    optimizer = optim.Adam(protonet.parameters(), lr=learning_rate, weight_decay=0.999)
+
     train(epoch, optimizer)
     # test(epoch)
     if epoch%args.test_interval==0:
