@@ -238,7 +238,7 @@ with open('logs_test_pro_sim.csv', 'a') as  csvfile_test:
     writer_test.writeheader()
 
 for epoch in range(args.n_epoch):
-
+    print (args.train)
     if args.train:
         train(epoch)
     # test(epoch)
