@@ -213,7 +213,7 @@ optimizer = optim.Adam(protonet.parameters(), lr=args.lr)
 
 # model restore
 try:
-    checkpoint = torch.load('../ori/model/epoch_' + str(args.from_epoch) + '.pth')
+    checkpoint = torch.load('./model_pro/epoch_' + str(args.from_epoch) + '.pth')
     protonet.load_state_dict(checkpoint)
     print("\n--------model restored--------\n")
 except:
