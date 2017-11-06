@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from determinant import Determinant, Determinant_byBatch
 
 class ProtoNetwork(nn.Module):
-    def __init__(self, way=5, shot=5, quiry=15, if_cuda=True, nchannel):
+    def __init__(self, way=5, shot=5, quiry=15, if_cuda=True, nchannel=64):
         super(ProtoNetwork, self).__init__()
 
         self.if_cuda = if_cuda
