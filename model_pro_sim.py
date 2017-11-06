@@ -104,7 +104,7 @@ class ProtoNetwork(nn.Module):
         # matrix_A = matrix_A.bmm(matrix_A_trans)# batchsize*way, shot-1, shot-1
         # print (matrix_A)
         Volume_A = Determinant_byBatch(matrix_A) # batchsize*way
-        # print (Volume_A)
+        print (Volume_A, 'Volume_A')
         Volume_A = Volume_A.view(-1, self.way) # batchsize, way
         # print (matrix_A.size(), 'matrix_A.size()')
         '''Volume_B'''
@@ -118,6 +118,7 @@ class ProtoNetwork(nn.Module):
         matrix_B = matrix_B.bmm(matrix_B_trans) + I_B # batchsiz*quiry*way, shot, shot
         # print (matrix_B)
         Volume_B = Determinant_byBatch(matrix_B)
+        print (Volume_B, 'Volume_B')
         # print (Volume_B)
         Volume_B = Volume_B.view(-1, self.way*self.quiry, self.way) # batchsize, quiry, way
 
