@@ -25,7 +25,7 @@ parser.add_argument('--batch-size', type=int, default=32, metavar='N', help='inp
 parser.add_argument('--n-epoch', type=int, default=10000, metavar='N', help='number of epochs to train (default: 20)')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
 parser.add_argument('--is-multi-gpu', default=False, help='if use multiple gpu(default: False)')
-parser.add_argument('--train', type=bool, default=True)
+parser.add_argument('--train', type=bool, default=False)
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--test-interval', type=int, default=1)
@@ -238,7 +238,7 @@ with open('logs_test_pro_sim.csv', 'a') as  csvfile_test:
     writer_test.writeheader()
 
 for epoch in range(args.n_epoch):
-    print (args.train)
+    # print (args.train)
     if args.train:
         train(epoch)
     # test(epoch)
