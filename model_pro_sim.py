@@ -8,19 +8,21 @@ import torch.nn.functional as F
 from determinant import Determinant, Determinant_byBatch
 
 class ProtoNetwork(nn.Module):
-    def __init__(self, way=5, shot=5, quiry=15, if_cuda=True):
+    def __init__(self, way=5, shot=5, quiry=15, if_cuda=True, nchannel):
         super(ProtoNetwork, self).__init__()
 
         self.if_cuda = if_cuda
 
-        self.conv1 = nn.Conv2d(3, 64, 3, stride=1, padding=1)
-        self.batchNorm1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
-        self.batchNorm2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
-        self.batchNorm3 = nn.BatchNorm2d(64)
-        self.conv4 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
-        self.batchNorm4 = nn.BatchNorm2d(64)
+        self.nchannel = nchannel
+
+        self.conv1 = nn.Conv2d(3, self.nchannel, 3, stride=1, padding=1)
+        self.batchNorm1 = nn.BatchNorm2d(self.nchannel)
+        self.conv2 = nn.Conv2d(self.nchannel, self.nchannel, 3, stride=1, padding=1)
+        self.batchNorm2 = nn.BatchNorm2d(self.nchannel)
+        self.conv3 = nn.Conv2d(self.nchannel, self.nchannel, 3, stride=1, padding=1)
+        self.batchNorm3 = nn.BatchNorm2d(self.nchannel)
+        self.conv4 = nn.Conv2d(self.nchannel, self.nchannel, 3, stride=1, padding=1)
+        self.batchNorm4 = nn.BatchNorm2d(self.nchannel)
 
         self.softmax = nn.Softmax()
         self.way = way
@@ -68,10 +70,10 @@ class ProtoNetwork(nn.Module):
         Returns:
         dists: [batchsize, quiry, way] same for examples in a same category
         '''
-        centers = torch.mean(support.view(-1, self.way, self.shot, 1600), 2) # batchsize, way, D
+        centers = torch.mean(support.view(-1, self.way, self.shot, self.nchannel*25), 2) # batchsize, way, D
         # print (centers)
-        centers = centers.squeeze().unsqueeze(1).repeat(1, self.way*self.quiry, 1, 1).view(-1, 1600) # batchsize, way*quiry, way, D
-        sample = sample.unsqueeze(2).repeat(1, 1, self.way, 1).view(-1, 1600) # batchsize, way*quiry, way, D
+        centers = centers.squeeze().unsqueeze(1).repeat(1, self.way*self.quiry, 1, 1).view(-1, self.nchannel*25) # batchsize, way*quiry, way, D
+        sample = sample.unsqueeze(2).repeat(1, 1, self.way, 1).view(-1, self.nchannel*25) # batchsize, way*quiry, way, D
         dists = self.pdist(centers, sample) # batchsize*quiry*way
         dists = dists.view(-1, self.way*self.quiry, self.way)
         dists = dists*(-1)
@@ -97,28 +99,28 @@ class ProtoNetwork(nn.Module):
         # print (support)
         # print (sample)
         '''Volume_A'''
-        support = support.view(-1, self.shot, 1600) # batchsize*way, shot, D
+        support = support.view(-1, self.shot, self.nchannel*25) # batchsize*way, shot, D
         matrix_A = support[:, 1:].sub(support[:, 0].unsqueeze(1).repeat(1, self.shot-1, 1)) # batchsize*way, shot-1, D
         matrix_A_trans = matrix_A.permute(0, 2, 1) # batchsize*way, D, shot-1
         matrix_A = matrix_A.bmm(matrix_A_trans) + I_A
         # matrix_A = matrix_A.bmm(matrix_A_trans)# batchsize*way, shot-1, shot-1
         # print (matrix_A)
-        Volume_A = Determinant_byBatch(matrix_A) # batchsize*way
-        print (Volume_A, 'Volume_A')
+        Volume_A = torch.abs(Determinant_byBatch(matrix_A)) # batchsize*way
+        # print (Volume_A, 'Volume_A')
         Volume_A = Volume_A.view(-1, self.way) # batchsize, way
         # print (matrix_A.size(), 'matrix_A.size()')
         '''Volume_B'''
-        support = support.view(-1, self.way*self.shot, 1600)
+        support = support.view(-1, self.way*self.shot, self.nchannel*25)
         matrix_B = support.unsqueeze(1).repeat(1, self.way*self.quiry, 1, 1).sub(sample.unsqueeze(2).repeat(1, 1, self.way*self.shot, 1))
         # batchsize, quiry, way*shot, D
         # print (matrix_B.size(), 'matrix_B.size()')
-        matrix_B = matrix_B.view(-1, self.shot, 1600) # batchsiz*quiry*way, shot, D
+        matrix_B = matrix_B.view(-1, self.shot, self.nchannel*25) # batchsiz*quiry*way, shot, D
         matrix_B_trans = matrix_B.permute(0, 2, 1) # batchsiz*quiry*way, D, shot
         # matrix_B = matrix_B.bmm(matrix_B_trans)
         matrix_B = matrix_B.bmm(matrix_B_trans) + I_B # batchsiz*quiry*way, shot, shot
         # print (matrix_B)
-        Volume_B = Determinant_byBatch(matrix_B)
-        print (Volume_B, 'Volume_B')
+        Volume_B = torch.abs(Determinant_byBatch(matrix_B))
+        # print (Volume_B, 'Volume_B')
         # print (Volume_B)
         Volume_B = Volume_B.view(-1, self.way*self.quiry, self.way) # batchsize, quiry, way
 
@@ -151,7 +153,7 @@ class ProtoNetwork(nn.Module):
         x = self.batchNorm4(x)
         x_conv = F.max_pool2d(x, 2)
         """flatten"""
-        x_flatten = x_conv.view(-1, 1600)
+        x_flatten = x_conv.view(-1, self.nchannel*25)
         return x_flatten
 
     def forward(self, support, sample):
@@ -159,12 +161,12 @@ class ProtoNetwork(nn.Module):
         # _, quiry, _, _, _ = sample.size()
         support = support.view(-1, 3, 84, 84)
         sample = sample.view(-1, 3, 84, 84)
-        support = self.convnet(support) # [batchsize, way, shot, 1600]
-        sample = self.convnet(sample) # [batchsize, way, quiry, 1600]
+        support = self.convnet(support) # [batchsize, way, shot, self.nchannel*25]
+        sample = self.convnet(sample) # [batchsize, way, quiry, self.nchannel*25]
         # print (support.size())
         # print (sample.size())
-        support = support.view(-1, self.way*self.shot, 1600)
-        sample = sample.view(-1, self.way*self.quiry, 1600)
+        support = support.view(-1, self.way*self.shot, self.nchannel*25)
+        sample = sample.view(-1, self.way*self.quiry, self.nchannel*25)
         # logits = self.euclidean_distance_byBatch(support, sample) # [batchsize, quiry, way]
         logits = self.simplex_distance_byBatch(support, sample)
         softmax_logits = self.softmax(logits.view(-1, self.way)) # [batchsize, quiry, way]

@@ -29,6 +29,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S', help='random see
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--test-interval', type=int, default=1)
 parser.add_argument('--from-epoch', type=int, default=35)
+parser.add_argument('--nchannel', type=int, default=128)
 parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
 parser.add_argument('--quiry', type=int, default=1)
@@ -196,9 +197,9 @@ def test(epoch):
 
 
 if args.is_multi_gpu:
-    protonet = nn.parallel.DataParallel(ProtoNetwork(way=args.way, shot=args.shot, quiry=args.quiry))
+    protonet = nn.parallel.DataParallel(ProtoNetwork(way=args.way, shot=args.shot, quiry=args.quiry, nchannel=args.nchannel))
 else:
-    protonet = ProtoNetwork(way=args.way, shot=args.shot, quiry=args.quiry)
+    protonet = ProtoNetwork(way=args.way, shot=args.shot, quiry=args.quiry, nchannel=args.nchannel)
 
 if args.cuda:
     protonet = protonet.cuda()
