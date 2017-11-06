@@ -30,7 +30,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S', help='random see
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--test-interval', type=int, default=1)
 parser.add_argument('--from-epoch', type=int, default=35)
-parser.add_argument('--nchannel', type=int, default=128)
+parser.add_argument('--nchannel', type=int, default=64)
 parser.add_argument('--way', type=int, default=5)
 parser.add_argument('--shot', type=int, default=5)
 parser.add_argument('--quiry', type=int, default=1)
@@ -239,8 +239,8 @@ with open('logs_test_pro.csv', 'a') as  csvfile_test:
 
 for epoch in range(args.n_epoch):
 
-    if args.if_train:
-        train(epoch)
+    # if args.if_train:
+    train(epoch)
     # test(epoch)
     if epoch%args.test_interval==0:
         val(epoch)
